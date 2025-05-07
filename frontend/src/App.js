@@ -40,13 +40,13 @@ function App() {
   const [arbLoading, setArbLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/common-funding-table")
+    fetch("http://45.32.114.196:8080/api/common-funding-table")
       .then((res) => res.json())
       .then((json) => {
         setData(json);
         setLoading(false);
       });
-    fetch("/api/top-arbitrage")
+    fetch("http://45.32.114.196:8080/api/top-arbitrage")
       .then((res) => res.json())
       .then((json) => {
         setArbData(json);
