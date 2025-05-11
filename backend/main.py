@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import ccxt
 import asyncio
 import ccxt.async_support as ccxt_async  # 비동기 ccxt
+import sqlite3
+import json
+import time
 
 app = FastAPI()
 app.add_middleware(
@@ -52,8 +55,49 @@ def get_funding_rates():
         result[name] = rates
     return result
 
+def get_db():
+    conn = sqlite3.connect('funding_history.db')
+    return conn
+
+def save_snapshot(data_type, data):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS funding_snapshot (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            data_type TEXT,
+            data TEXT
+        )
+    ''')
+    c.execute(
+        'INSERT INTO funding_snapshot (data_type, data) VALUES (?, ?)',
+        (data_type, json.dumps(data))
+    )
+    conn.commit()
+    conn.close()
+
+def get_latest_snapshot(data_type):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT data, created_at FROM funding_snapshot
+        WHERE data_type=?
+        ORDER BY created_at DESC LIMIT 1
+    ''', (data_type,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        data, created_at = row
+        return json.loads(data), created_at
+    return None, None
+
 @app.get("/api/common-funding-table")
 async def common_funding_table():
+    cached, cached_time = get_latest_snapshot('funding')
+    if cached and (time.time() - time.mktime(time.strptime(cached_time, "%Y-%m-%d %H:%M:%S"))) < 300:
+        return cached
+
     exchanges = {
         "binance": ccxt_async.binance(),
         "bybit": ccxt_async.bybit(),
@@ -115,6 +159,9 @@ async def common_funding_table():
         table.append(row)
 
     await asyncio.gather(*[ex.close() for ex in exchanges.values()])
+
+    # 3. DB에 저장
+    save_snapshot('funding', table)
     return table
 
 @app.get("/api/debug-binance-info")
@@ -133,6 +180,10 @@ async def debug_binance_info():
 
 @app.get("/api/top-arbitrage")
 async def top_arbitrage():
+    cached, cached_time = get_latest_snapshot('arbitrage')
+    if cached and (time.time() - time.mktime(time.strptime(cached_time, "%Y-%m-%d %H:%M:%S"))) < 300:
+        return cached
+
     exchanges = {
         "binance": ccxt_async.binance(),
         "bybit": ccxt_async.bybit(),
@@ -193,4 +244,28 @@ async def top_arbitrage():
         })
     # APR 내림차순 정렬 후 상위 10개
     table.sort(key=lambda x: x["apr"], reverse=True)
-    return table[:10] 
+    table = table[:10]
+
+    save_snapshot('arbitrage', table)
+    return table
+
+# (선택) 과거 히스토리 조회 API
+@app.get("/api/history/{data_type}")
+def get_history(data_type: str, limit: int = 10):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, created_at, data FROM funding_snapshot
+        WHERE data_type=?
+        ORDER BY created_at DESC LIMIT ?
+    ''', (data_type, limit))
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {
+            "id": row[0],
+            "created_at": row[1],
+            "data": json.loads(row[2])
+        }
+        for row in rows
+    ] 
