@@ -19,7 +19,7 @@ function LandingPage() {
             In the rapidly evolving crypto landscape, assets are listed on multiple exchanges simultaneously, unlike traditional finance. This leads to price discrepancies and market inefficiencies, which manifest as arbitrage opportunities and funding rate gaps. Historically, only institutions could exploit these inefficiencies. Our mission is to democratize access to these opportunities, empower retail traders, and contribute to a more efficient and innovative financial future.
           </p>
           <p>
-            By tracking the top 50 coins by trading volume across Binance, Bybit, and OKX, we provide transparent, real-time funding rate comparisons and highlight the top 10 arbitrage opportunities. This platform aims to make the crypto market fairer and more efficient for everyone.
+            By tracking the top 50 coins by trading volume across Binance, Bybit, and OKX, we provide transparent, real-time funding rate comparisons and highlight the top 10 arbitrage opportunities. <b>This project is open-source and designed to be run locally on your own machine for learning, research, or personal use.</b> All data is processed and visualized in real time on your local environment.
           </p>
         </section>
 
@@ -30,6 +30,7 @@ function LandingPage() {
             <li>Top 10 arbitrage opportunities, with APR and long/short exchange info</li>
             <li>Volume, color-coded rates, and responsive UI</li>
             <li>Open-source, transparent, and retail-friendly</li>
+            <li><b>Runs locally—no public deployment required</b></li>
           </ul>
         </section>
 
@@ -39,7 +40,8 @@ function LandingPage() {
             <li>Frontend: React.js</li>
             <li>Backend: FastAPI, ccxt</li>
             <li>Database: SQLite (for caching and history)</li>
-            <li>Deployment: Vercel, Vultr, Nginx, Let's Encrypt</li>
+            <li><b>Local Development:</b> Python 3.9+, Node.js 14+, npm</li>
+            <li><b>How to use:</b> Clone the repo and follow the README to run locally</li>
           </ul>
         </section>
 
