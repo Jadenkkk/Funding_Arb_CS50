@@ -10,7 +10,7 @@ The current cryptocurrency market exhibits significant inefficiencies, particula
 
 ### Our Solution: Democratizing Arbitrage
 
-Historically, arbitrage opportunities in cryptocurrency markets have been primarily accessible to institutional players with sophisticated infrastructure. Our project aims to democratize this access by providing retail traders with real-time insights into funding rate disparities across major exchanges.
+Historically, arbitrage opportunities in cryptocurrency markets have been primarily accessible to institutional players with sophisticated infrastructure. My project aims to democratize this access by providing retail traders with real-time insights into funding rate disparities across major exchanges.
 
 By tracking funding rates for the top 50 cryptocurrencies by 24-hour trading volume across Binance, Bybit, OKX, and Hyperliquid, we identify and present arbitrage opportunities in an accessible format. This transparency not only benefits individual traders but also contributes to market efficiency by:
 
@@ -23,7 +23,7 @@ By tracking funding rates for the top 50 cryptocurrencies by 24-hour trading vol
 
 - **Real-time Funding Rate Comparison**
   - Tracks funding rates for USDT-margined perpetual futures
-  - Shows rates from Binance, Bybit, OKX, and Hyperliquid
+  - Shows rates from Binance, Bybit, OKX (Top 3 Global Exchange)
   - Displays volume and other relevant metrics
   - Color-coded for easy comparison
 
@@ -36,83 +36,141 @@ By tracking funding rates for the top 50 cryptocurrencies by 24-hour trading vol
 ## Tech Stack
 
 - **Frontend**: React.js
+  - Material-UI for components
+  - Recharts for data visualization
+  - Axios for API calls
+  - Responsive design
 - **Backend**: FastAPI (Python)
-- **Deployment**:
-  - Frontend: Vercel
-  - Backend: Vultr VPS
-  - Domain: Namecheap (jadenkk.xyz)
-  - SSL: Let's Encrypt
-  - Reverse Proxy: Nginx
+  - Async data collection
+  - SQLite database
+  - Exchange API integration
+- **Development Environment**:
+  - Local development server
+  - SQLite database for historical data
+  - Real-time data fetching from exchanges
 
-## Live Demo
+## Project Structure
 
-Visit [https://jadenkk.xyz](https://jadenkk.xyz) to see the application in action.
+```
+Funding_Arb_CS50/
+├── backend/
+│   ├── main.py              # FastAPI application
+│   ├── requirements.txt     # Python dependencies
+│   └── funding_history.db   # SQLite database
+└── frontend/
+    ├── src/                 # React source code
+    │   ├── components/     # React components
+    │   ├── services/       # API services
+    │   └── App.js          # Main application component
+    ├── public/             # Static files
+    └── package.json        # Node.js dependencies
+```
 
-## Project Video
+## Frontend Components
 
-[Watch the project demo video](https://youtube.com/watch?v=YOUR_VIDEO_ID)
+### Main Components
+- `App.js`: Main application component
+- `LandingPage.js`: Project introduction and navigation
+- `TrackerPage.js`: Main tracker interface with tables and charts
 
-## Local Development
+### Key Features
+1. **Funding Rate Table**
+   - Real-time data updates
+   - Color-coded rates
+   - Volume information
+   - Exchange comparison
+
+2. **Arbitrage Table**
+   - Top opportunities
+   - APR calculation
+   - Position details
+   - Auto-refresh
+
+3. **History Chart**
+   - Historical APR visualization
+   - Top 5 coins
+   - Interactive timeline
+   - Data aggregation
+
+## Local Development & Testing
 
 ### Prerequisites
 
 - Python 3.9+
 - Node.js 14+
 - npm or yarn
+- Git
 
-### Backend Setup
+### Setup Instructions
 
-1. Navigate to the backend directory:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Jadenkkk/Funding_Arb_CS50.git
+   cd Funding_Arb_CS50
+   ```
+
+2. Backend Setup:
    ```bash
    cd backend
-   ```
-
-2. Create and activate virtual environment:
-   ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
    pip install -r requirements.txt
-   ```
-
-4. Start the FastAPI server:
-   ```bash
    uvicorn main:app --host 0.0.0.0 --port 8080
    ```
 
-### Frontend Setup
+   The backend will be available at: http://localhost:8080
 
-1. Navigate to the frontend directory:
+3. Frontend Setup:
+   Open a new terminal window:
    ```bash
    cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
    npm install
-   ```
-
-3. Start the development server:
-   ```bash
    npm start
    ```
 
-## API Endpoints
+   The frontend will be available at: http://localhost:3000
 
-- `GET /api/common-funding-table`: Returns funding rates for common pairs
-- `GET /api/arbitrage-opportunities`: Returns top arbitrage opportunities
+### Testing the Application
 
-## Contributing
+1. Open http://localhost:3000 in your web browser
+2. You should see:
+   - Landing page with project overview
+   - Funding rate comparison table
+   - Arbitrage opportunities table
+   - Historical APR chart
 
-We welcome contributions to help democratize access to cryptocurrency market opportunities. Feel free to submit issues and enhancement requests!
+### API Endpoints
 
-## License
+Test these endpoints in your browser or using curl:
+- http://localhost:8080/api/common-funding-table
+- http://localhost:8080/api/arbitrage-opportunities
+- http://localhost:8080/api/history/arbitrage
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Troubleshooting
+
+If you encounter any issues:
+1. Ensure both backend and frontend servers are running
+2. Check that ports 8080 and 3000 are available
+3. Verify all dependencies are installed correctly
+4. Check the console for any error messages
+5. Make sure you have an active internet connection for exchange API access
+
+## Development Guidelines
+
+### Frontend
+1. Use functional components with hooks
+2. Follow React best practices
+3. Maintain consistent code style
+4. Handle errors gracefully
+5. Implement loading states
+
+### Backend
+1. Use async/await for API calls
+2. Implement proper error handling
+3. Follow FastAPI best practices
+4. Maintain clean code structure
+5. Document API endpoints
 
 ## Author
 
-Jaden Kim - [GitHub](https://github.com/Jadenkkk) 
+Jaden Kang - [GitHub](https://github.com/Jadenkkk) 

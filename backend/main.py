@@ -1,27 +1,30 @@
+# Imports and App Initialization
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import ccxt
 import asyncio
-import ccxt.async_support as ccxt_async  # 비동기 ccxt
+import ccxt.async_support as ccxt_async
 import sqlite3
 import json
 import time
 
+# FastAPI App and CORS Setup
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 개발 중 전체 허용, 배포시 도메인 제한
+    allow_origins=["*"],  # Allow all origins during development; restrict to your domain in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/api/hello")
-def hello():
-    return {"msg": "Hello Funding Arb!"}
-
+# Get Perpetual Symbols for Each Exchange
 @app.get("/api/perp-symbols")
 def get_perp_symbols():
+    """
+    Returns a dictionary of all perpetual swap symbols for each supported exchange.
+    This helps the frontend know which symbols are available for funding rate comparison.
+    """
     exchanges = {
         "binance": ccxt.binance(),
         "bybit": ccxt.bybit(),
@@ -30,18 +33,23 @@ def get_perp_symbols():
     result = {}
     for name, ex in exchanges.items():
         markets = ex.load_markets()
+        # Only include symbols that are perpetual swaps ("swap": True)
         perp_symbols = [s for s, m in markets.items() if m.get("swap", False)]
         result[name] = perp_symbols
     return result
 
+# Get Funding Rates for Major Symbols
 @app.get("/api/funding-rates")
 def get_funding_rates():
+    """
+    Returns the current funding rates for a small set of major symbols (BTC, ETH) across all exchanges.
+    This is a simple example endpoint for quick funding rate checks.
+    """
     exchanges = {
         "binance": ccxt.binance(),
         "bybit": ccxt.bybit(),
         "okx": ccxt.okx(),
     }
-    # 예시: BTC/USDT:USDT, ETH/USDT:USDT 등 주요 심볼만
     symbols = ["BTC/USDT:USDT", "ETH/USDT:USDT"]
     result = {}
     for name, ex in exchanges.items():
@@ -55,11 +63,18 @@ def get_funding_rates():
         result[name] = rates
     return result
 
+# Database Helper Functions
 def get_db():
-    conn = sqlite3.connect('funding_history.db')
-    return conn
+    """
+    Opens a connection to the SQLite database for storing and retrieving funding/arbitrage snapshots.
+    """
+    return sqlite3.connect('funding_history.db')
 
 def save_snapshot(data_type, data):
+    """
+    Saves a snapshot of funding or arbitrage data to the database with a timestamp.
+    If the table does not exist, it is created automatically.
+    """
     conn = get_db()
     c = conn.cursor()
     c.execute('''
@@ -78,6 +93,10 @@ def save_snapshot(data_type, data):
     conn.close()
 
 def get_latest_snapshot(data_type):
+    """
+    Retrieves the most recent snapshot of the given data_type (e.g., 'funding' or 'arbitrage').
+    Returns the data and the timestamp it was created.
+    """
     conn = get_db()
     c = conn.cursor()
     c.execute('''
@@ -92,63 +111,63 @@ def get_latest_snapshot(data_type):
         return json.loads(data), created_at
     return None, None
 
+# Get Common Funding Table (Top 50 by Volume)
 @app.get("/api/common-funding-table")
 async def common_funding_table():
+    """
+    Returns a table comparing funding rates for the top 50 USDT-margined perpetual symbols
+    (by Binance 24h quote volume) that are listed on all supported exchanges.
+    Uses caching (5 minutes) to reduce API load and improve performance.
+    """
     cached, cached_time = get_latest_snapshot('funding')
+    # Use cached data if it is less than 5 minutes old
     if cached and (time.time() - time.mktime(time.strptime(cached_time, "%Y-%m-%d %H:%M:%S"))) < 300:
         return cached
 
+    # Initialize async exchange clients
     exchanges = {
         "binance": ccxt_async.binance(),
         "bybit": ccxt_async.bybit(),
         "okx": ccxt_async.okx(),
     }
-    # 1. 각 거래소의 perp 심볼 리스트 구하기
+    # Step 1: Get all perpetual symbols for each exchange
     symbol_sets = {}
     for name, ex in exchanges.items():
         markets = await ex.load_markets()
         perp_symbols = set([s for s, m in markets.items() if m.get("swap", False)])
         symbol_sets[name] = perp_symbols
-
-    # 2. 교집합(공통 상장 심볼) 구하기
+    # Step 2: Find symbols that are listed on all exchanges (intersection)
     common_symbols = list(sorted(set.intersection(*symbol_sets.values())))
-
-    # 3. USDT 마진 perp만 남기기
+    # Step 3: Keep only USDT-margined perpetual contracts
     usdt_perp_symbols = [s for s in common_symbols if s.endswith(":USDT")]
-
-    # 4. base symbol(기초자산) 기준으로 중복 제거 (대표 마켓만)
+    # Step 4: Remove duplicates by base symbol (e.g., only one BTC/USDT:USDT per base)
     def extract_base_symbol(symbol):
         return symbol.split('/')[0]
-
     unique_base = {}
     for symbol in usdt_perp_symbols:
         base = extract_base_symbol(symbol)
         if base not in unique_base:
             unique_base[base] = symbol
     filtered_symbols = list(unique_base.values())
-
-    # 5. Binance 24h 거래량(quoteVolume) 기준 상위 50개 추출 및 거래량 저장
+    # Step 5: Get Binance 24h quote volume for each symbol and select top 50
     async def get_volume(symbol):
         try:
             ticker = await exchanges["binance"].fetch_ticker(symbol)
             return float(ticker.get("quoteVolume", 0)), ticker.get("quoteVolume", 0)
         except Exception:
             return 0, 0
-
     volume_results = await asyncio.gather(*[get_volume(symbol) for symbol in filtered_symbols])
     vol_list = list(zip(filtered_symbols, volume_results))
     vol_list.sort(key=lambda x: x[1][0], reverse=True)
     top_symbols = [symbol for symbol, _ in vol_list[:50]]
     top_volumes = {symbol: v[1] for symbol, v in vol_list[:50]}
-
-    # 6. 각 거래소별 funding rate 비동기 조회
+    # Step 6: Fetch funding rates for each symbol on each exchange (async)
     async def fetch_rate(ex, symbol):
         try:
             rate = await ex.fetch_funding_rate(symbol)
             return rate.get("fundingRate")
         except Exception:
             return None
-
     table = []
     for symbol in top_symbols:
         row = {"symbol": symbol, "Volume (Binance)": top_volumes[symbol]}
@@ -157,70 +176,55 @@ async def common_funding_table():
         for i, name in enumerate(exchanges.keys()):
             row[name] = results[i]
         table.append(row)
-
+    # Always close all async exchange clients to avoid resource warnings
     await asyncio.gather(*[ex.close() for ex in exchanges.values()])
-
-    # 3. DB에 저장
+    # Save the result to the database for caching and history
     save_snapshot('funding', table)
     return table
 
-@app.get("/api/debug-binance-info")
-async def debug_binance_info():
-    import ccxt.async_support as ccxt_async
-    binance = ccxt_async.binance()
-    await binance.load_markets()
-    # 아무 perp 심볼 하나 선택 (예: BTC/USDT:USDT)
-    for symbol, m in binance.markets.items():
-        if m.get("swap", False):
-            info = m["info"]
-            await binance.close()
-            return {"symbol": symbol, "info": info}
-    await binance.close()
-    return {"error": "No perp symbol found"}
-
+# Get Top Arbitrage Opportunities (Top 10 by APR)
 @app.get("/api/top-arbitrage")
 async def top_arbitrage():
+    """
+    Returns the top 10 arbitrage opportunities (by annualized APR) for USDT-margined perpetuals
+    that are listed on all supported exchanges. Uses 5-minute caching for efficiency.
+    """
     cached, cached_time = get_latest_snapshot('arbitrage')
+    # Use cached data if it is less than 5 minutes old
     if cached and (time.time() - time.mktime(time.strptime(cached_time, "%Y-%m-%d %H:%M:%S"))) < 300:
         return cached
-
+    # Initialize async exchange clients
     exchanges = {
         "binance": ccxt_async.binance(),
         "bybit": ccxt_async.bybit(),
         "okx": ccxt_async.okx(),
     }
-    # 1. 각 거래소의 perp 심볼 리스트 구하기
+    # Step 1: Get all perpetual symbols for each exchange
     symbol_sets = {}
     for name, ex in exchanges.items():
         markets = await ex.load_markets()
         perp_symbols = set([s for s, m in markets.items() if m.get("swap", False)])
         symbol_sets[name] = perp_symbols
-
-    # 2. 교집합(공통 상장 심볼) 구하기
+    # Step 2: Find symbols that are listed on all exchanges (intersection)
     common_symbols = list(sorted(set.intersection(*symbol_sets.values())))
-
-    # 3. USDT 마진 perp만 남기기
+    # Step 3: Keep only USDT-margined perpetual contracts
     usdt_perp_symbols = [s for s in common_symbols if s.endswith(":USDT")]
-
-    # 4. base symbol(기초자산) 기준으로 중복 제거 (대표 마켓만)
+    # Step 4: Remove duplicates by base symbol
     def extract_base_symbol(symbol):
         return symbol.split('/')[0]
-
     unique_base = {}
     for symbol in usdt_perp_symbols:
         base = extract_base_symbol(symbol)
         if base not in unique_base:
             unique_base[base] = symbol
     filtered_symbols = list(unique_base.values())
-
-    # 5. 각 거래소별 funding rate 비동기 조회
+    # Step 5: Fetch funding rates for each symbol on each exchange (async)
     async def fetch_rate(ex, symbol):
         try:
             rate = await ex.fetch_funding_rate(symbol)
             return rate.get("fundingRate")
         except Exception:
             return None
-
     table = []
     for symbol in filtered_symbols:
         rates = {}
@@ -228,30 +232,37 @@ async def top_arbitrage():
         results = await asyncio.gather(*tasks)
         for i, name in enumerate(exchanges.keys()):
             rates[name] = results[i]
-        # long: funding rate가 가장 낮은 거래소, short: 가장 높은 거래소
+        # Only consider symbols with at least 2 valid funding rates
         valid_rates = {k: v for k, v in rates.items() if v is not None}
         if len(valid_rates) < 2:
-            continue  # 2개 미만이면 arbitrage 불가
+            continue
+        # Find the exchange with the lowest (long) and highest (short) funding rates
         long_ex, long_rate = min(valid_rates.items(), key=lambda x: x[1])
         short_ex, short_rate = max(valid_rates.items(), key=lambda x: x[1])
         diff = short_rate - long_rate
-        apr = diff * 3 * 365 * 100  # 8시간 단위 funding rate 기준
+        # Funding rate is per 8 hours, so annualize: diff * 3 (per day) * 365 (per year) * 100 (percent)
+        apr = diff * 3 * 365 * 100
         table.append({
             "symbol": symbol,
             "long_exchange": f"{long_ex} ({long_rate:.6%})",
             "short_exchange": f"{short_ex} ({short_rate:.6%})",
             "apr": apr
         })
-    # APR 내림차순 정렬 후 상위 10개
+    # Sort by APR in descending order and keep the top 10
     table.sort(key=lambda x: x["apr"], reverse=True)
     table = table[:10]
-
+    # Save the result to the database for caching and history
     save_snapshot('arbitrage', table)
     return table
 
-# (선택) 과거 히스토리 조회 API
+# Get Historical Snapshots (Optional)
 @app.get("/api/history/{data_type}")
 def get_history(data_type: str, limit: int = 10):
+    """
+    Returns a list of historical snapshots for the given data_type (e.g., 'funding' or 'arbitrage').
+    Each snapshot includes an id, timestamp, and the data at that time.
+    The limit parameter controls how many recent snapshots are returned (default: 10).
+    """
     conn = get_db()
     c = conn.cursor()
     c.execute('''
