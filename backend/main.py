@@ -7,6 +7,8 @@ import ccxt.async_support as ccxt_async
 import sqlite3
 import json
 import time
+from collections import defaultdict
+from datetime import datetime
 
 # FastAPI App and CORS Setup
 app = FastAPI()
@@ -279,4 +281,33 @@ def get_history(data_type: str, limit: int = 10):
             "data": json.loads(row[2])
         }
         for row in rows
-    ] 
+    ]
+
+@app.get("/api/history/arbitrage/hourly")
+def get_hourly_top_arbitrage():
+    conn = sqlite3.connect("funding_history.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT created_at, data FROM funding_snapshot WHERE data_type='arbitrage' ORDER BY created_at ASC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    hourly = defaultdict(list)
+    for created_at, data_json in rows:
+        dt = datetime.fromisoformat(created_at)
+        hour_key = dt.replace(minute=0, second=0, microsecond=0)
+        data = json.loads(data_json)
+        hourly[hour_key].append(data)
+
+    result = []
+    for hour, data_list in hourly.items():
+        all_coins = [coin for snapshot in data_list for coin in snapshot]
+        if not all_coins:
+            continue
+        top = max(all_coins, key=lambda x: x.get("apr", float('-inf')))
+        result.append({
+            "hour": hour.isoformat(),
+            "symbol": top["symbol"],
+            "apr": top["apr"]
+        })
+    result.sort(key=lambda x: x["hour"])
+    return result 

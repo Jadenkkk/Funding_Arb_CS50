@@ -33,6 +33,10 @@ By tracking funding rates for the top 50 cryptocurrencies by 24-hour trading vol
   - Shows long/short positions for each trade
   - Updates in real-time
 
+- **Hourly Top Arbitrage APR (Bar Chart)**
+  - Visualizes, for each hour, the coin with the highest arbitrage APR and its value
+  - Helps users spot the best arbitrage opportunities over time
+
 ## Tech Stack
 
 - **Frontend**: React.js
@@ -72,6 +76,7 @@ Funding_Arb_CS50/
 - `App.js`: Main application component
 - `LandingPage.js`: Project introduction and navigation
 - `TrackerPage.js`: Main tracker interface with tables and charts
+  - **Hourly Top Arbitrage APR Bar Chart**: Shows, for each hour, the coin with the highest arbitrage APR and its value as a bar chart
 
 ### Key Features
 1. **Funding Rate Table**
@@ -137,6 +142,7 @@ Funding_Arb_CS50/
    - Landing page with project overview
    - Funding rate comparison table
    - Arbitrage opportunities table
+   - **Hourly Top Arbitrage APR bar chart** visualizing the best hourly arbitrage opportunities
    - Historical APR chart
 
 ### API Endpoints

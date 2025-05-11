@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import './App.css';
 import { useNavigate } from "react-router-dom";
 import { Tabs, Tab, Box, Typography } from '@mui/material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, LabelList } from 'recharts';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const darkTheme = createTheme({
@@ -39,6 +39,8 @@ function TrackerPage() {
   const [error, setError] = useState(null);
   const [historyData, setHistoryData] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [hourlyData, setHourlyData] = useState([]);
+  const [hourlyLoading, setHourlyLoading] = useState(true);
   const navigate = useNavigate();
 
   const handleChange = (event, newValue) => {
@@ -89,6 +91,18 @@ function TrackerPage() {
     setHistoryLoading(false);
   };
 
+  const fetchHourlyHistory = async () => {
+    setHourlyLoading(true);
+    try {
+      const res = await fetch('http://localhost:8080/api/history/arbitrage/hourly');
+      const json = await res.json();
+      setHourlyData(json);
+    } catch (e) {
+      setHourlyData([]);
+    }
+    setHourlyLoading(false);
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -103,6 +117,7 @@ function TrackerPage() {
   useEffect(() => {
     if (value === 2) {
       fetchHistory();
+      fetchHourlyHistory();
     }
   }, [value]);
 
@@ -139,6 +154,11 @@ function TrackerPage() {
     const latest = historyData[0].data;
     return [...latest].sort((a, b) => b.apr - a.apr).slice(0, 5).map(x => x.symbol);
   }, [historyData]);
+
+  const getBaseSymbol = (symbol) => {
+    if (!symbol) return '';
+    return symbol.split('/')[0];
+  };
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -278,6 +298,47 @@ function TrackerPage() {
                         />
                       ))}
                     </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </div>
+            </TabPanel>
+          )}
+
+          {hourlyLoading ? (
+            <div className="loading">Loading chart...</div>
+          ) : (
+            <TabPanel value={value} index={2}>
+              <div className="table-section">
+                <h2>Hourly Top Arbitrage APR (Bar Chart)</h2>
+                <Box sx={{ width: '100%', height: 400 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={hourlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <CartesianGrid stroke="#444" strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" tickFormatter={h => h.slice(11, 16)} />
+                      <YAxis label={{ value: 'APR (%)', angle: -90, position: 'insideLeft', fill: '#b0c4d4' }} />
+                      <Tooltip
+                        formatter={(value, name, props) => [`${value}%`, 'APR']}
+                        labelFormatter={l => `Hour: ${l.slice(11, 16)}`}
+                      />
+                      <Bar dataKey="apr" fill="#8884d8">
+                        <LabelList
+                          dataKey="symbol"
+                          position="top"
+                          content={({ x, y, width, value }) => (
+                            <text
+                              x={x + width / 2}
+                              y={y - 8}
+                              fill="#fff"
+                              textAnchor="middle"
+                              fontSize={13}
+                              fontWeight={700}
+                            >
+                              {getBaseSymbol(value)}
+                            </text>
+                          )}
+                        />
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </Box>
               </div>

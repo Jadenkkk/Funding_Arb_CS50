@@ -4,6 +4,7 @@
 
 This project implements a real-time cryptocurrency funding rate arbitrage tracker using a modern web stack. The system is designed to provide retail traders with institutional-grade market insights by tracking funding rates across multiple exchanges.
 
+
 ## Architecture Decisions
 
 ### 1. Technology Stack Selection
@@ -193,6 +194,37 @@ Exchange APIs → Backend → SQLite DB → Frontend
   - Component memoization and React hooks to prevent unnecessary rerenders
   - Lazy loading and efficient data structures for fast UI updates
 
+### 8. Hourly Top Arbitrage APR Bar Chart
+
+#### Feature Overview
+- Visualizes, for each hour, the coin with the highest arbitrage APR and its value as a bar chart.
+- Allows users to quickly spot which coin had the best arbitrage opportunity in each hour.
+
+#### Backend Implementation
+- Endpoint: `/api/history/arbitrage/hourly`
+- For each hour, all arbitrage snapshots are grouped.
+- Among all coins in that hour, the coin with the highest APR is selected.
+- Returns a list of objects: `{ hour, symbol, apr }`.
+- Example:
+  ```json
+  [
+    { "hour": "2025-05-11T07:00:00", "symbol": "GAS/USDT:USDT", "apr": 123.45 },
+    ...
+  ]
+  ```
+
+#### Frontend Implementation
+- The bar chart is rendered in `TrackerPage.js`.
+- X-axis: hour (UTC), Y-axis: APR (%).
+- Each bar represents the top arbitrage coin for that hour, with the coin symbol displayed above the bar.
+- Color and label formatting for clarity.
+
+#### Rationale
+- This feature provides a clear, time-based view of the best arbitrage opportunities.
+- Users can easily identify which coins consistently offer high APRs and when the best opportunities occur.
+- The design supports both quick visual scanning and deeper analysis of arbitrage trends over time.
+
+
 ## Implementation Challenges & Solutions
 
 - **Heterogeneous Exchange APIs**: Solved with CCXT for unified access and normalization.
@@ -200,12 +232,14 @@ Exchange APIs → Backend → SQLite DB → Frontend
 - **Data Visualization Complexity**: Used Recharts for interactive, responsive charts.
 - **Error Handling**: Comprehensive try/except and user-friendly error messages throughout stack.
 
+
 ## Future Improvements
 
 - WebSocket support for true real-time updates
 - More advanced caching and data aggregation
 - User authentication and custom alerts
 - Additional exchange integrations and analytics
+
 
 ## Conclusion
 
