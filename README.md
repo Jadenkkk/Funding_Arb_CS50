@@ -19,7 +19,9 @@ By tracking funding rates for the top 50 cryptocurrencies by 24-hour trading vol
 3. Contributing to the overall price efficiency of cryptocurrency markets
 4. Supporting the broader mission of financial innovation in the crypto space
 
-### Product Demo: 
+### Product Demo
+
+[Watch the demo on YouTube!](https://youtu.be/AHNidmCttd0)
 
 ## Features
 
