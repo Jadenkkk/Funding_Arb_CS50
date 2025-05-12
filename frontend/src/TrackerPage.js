@@ -5,12 +5,14 @@ import { Tabs, Tab, Box, Typography } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, LabelList } from 'recharts';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
+// Create a dark theme for the application
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
   },
 });
 
+// TabPanel component for handling tab content visibility
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
   return (
@@ -30,26 +32,31 @@ function TabPanel(props) {
   );
 }
 
+// Main TrackerPage component for displaying funding rates and arbitrage opportunities
 function TrackerPage() {
-  const [value, setValue] = useState(0);
-  const [fundingData, setFundingData] = useState([]);
-  const [arbitrageData, setArbitrageData] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [historyData, setHistoryData] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [hourlyData, setHourlyData] = useState([]);
-  const [hourlyLoading, setHourlyLoading] = useState(true);
+  // State management for various features
+  const [value, setValue] = useState(0);                    // Current active tab
+  const [fundingData, setFundingData] = useState([]);       // Funding rate data
+  const [arbitrageData, setArbitrageData] = useState([]);   // Arbitrage opportunities
+  const [lastUpdated, setLastUpdated] = useState(null);     // Last data update timestamp
+  const [isLoading, setIsLoading] = useState(true);         // Loading state
+  const [error, setError] = useState(null);                 // Error state
+  const [historyData, setHistoryData] = useState([]);       // Historical data
+  const [historyLoading, setHistoryLoading] = useState(true); // History loading state
+  const [hourlyData, setHourlyData] = useState([]);         // Hourly data
+  const [hourlyLoading, setHourlyLoading] = useState(true); // Hourly data loading state
   const navigate = useNavigate();
 
+  // Handle tab change event
   const handleChange = (event, newValue) => {
     setValue(newValue);
   };
 
+  // Fetch all required data from the backend API endpoints
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      // Fetch funding rates, arbitrage opportunities, and history data concurrently
       const [fundingResponse, arbitrageResponse, historyResponse] = await Promise.all([
         fetch('http://localhost:8080/api/common-funding-table'),
         fetch('http://localhost:8080/api/top-arbitrage'),
@@ -60,12 +67,14 @@ function TrackerPage() {
         throw new Error('Network response was not ok');
       }
 
+      // Parse JSON responses
       const [funding, arbitrage, history] = await Promise.all([
         fundingResponse.json(),
         arbitrageResponse.json(),
         historyResponse.json()
       ]);
 
+      // Update state with fetched data
       setFundingData(funding);
       setArbitrageData(arbitrage);
       setHistoryData(history);
@@ -79,6 +88,7 @@ function TrackerPage() {
     }
   };
 
+  // Fetch historical arbitrage data with a limit of 50 entries
   const fetchHistory = async () => {
     setHistoryLoading(true);
     try {
@@ -91,6 +101,7 @@ function TrackerPage() {
     setHistoryLoading(false);
   };
 
+  // Fetch hourly arbitrage data for the bar chart
   const fetchHourlyHistory = async () => {
     setHourlyLoading(true);
     try {
@@ -103,10 +114,12 @@ function TrackerPage() {
     setHourlyLoading(false);
   };
 
+  // Initial data fetch on component mount
   useEffect(() => {
     fetchData();
   }, []);
 
+  // Set up periodic data refresh every 5 minutes
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
@@ -114,6 +127,7 @@ function TrackerPage() {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Fetch history data when history tab is selected
   useEffect(() => {
     if (value === 2) {
       fetchHistory();
@@ -121,19 +135,23 @@ function TrackerPage() {
     }
   }, [value]);
 
+  // Format date to local string
   const formatDate = (date) => {
     if (!date) return '';
     return new Date(date).toLocaleString();
   };
 
+  // Safely format numbers with fixed decimal places
   const safeToFixed = (value, digits) => {
     return (typeof value === 'number' && !isNaN(value)) ? value.toFixed(digits) : '-';
   };
+
+  // Safely format numbers with locale string
   const safeToLocaleString = (value) => {
     return (typeof value === 'number' && !isNaN(value)) ? value.toLocaleString() : '-';
   };
 
-  // 1. 모든 스냅샷에서 top 5 코인 선정 (가장 최근 스냅샷 기준)
+  // Get top 5 coins by APR from the most recent snapshot
   const allSymbols = historyData.length
     ? [...historyData[0].data]
         .sort((a, b) => b.apr - a.apr)
@@ -141,7 +159,7 @@ function TrackerPage() {
         .map(x => x.symbol)
     : [];
 
-  // 2. 각 스냅샷마다 top 5 코인에 대해 값이 없으면 0으로 채움 (선이 끊기지 않게)
+  // Process historical data for chart display
   const chartData = historyData
     .slice()
     .reverse()
@@ -154,16 +172,17 @@ function TrackerPage() {
       return row;
     });
 
-  // 최신 스냅샷의 UTC 날짜 (YYYY-MM-DD)
+  // Get UTC date of the latest snapshot
   const latestUTCDate = historyData.length > 0 ? new Date(historyData[0].created_at).toISOString().slice(0, 10) : '';
 
-  // 최신 스냅샷의 top 5 코인 기준 (APR 내림차순)
+  // Get top 5 coins by APR from the latest snapshot
   const latestTop5 = React.useMemo(() => {
     if (!historyData.length) return [];
     const latest = historyData[0].data;
     return [...latest].sort((a, b) => b.apr - a.apr).slice(0, 5).map(x => x.symbol);
   }, [historyData]);
 
+  // Extract base symbol from trading pair (e.g., "BTC/USDT" -> "BTC")
   const getBaseSymbol = (symbol) => {
     if (!symbol) return '';
     return symbol.split('/')[0];
@@ -172,6 +191,7 @@ function TrackerPage() {
   return (
     <ThemeProvider theme={darkTheme}>
       <div className="App">
+        {/* Header section with title and last updated timestamp */}
         <header className="App-header">
           <h1>Funding Rate Arbitrage Tracker</h1>
           {lastUpdated && (
@@ -184,7 +204,9 @@ function TrackerPage() {
           </button>
         </header>
 
+        {/* Main content container */}
         <Box sx={{ width: '100%' }}>
+          {/* Tab navigation */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs
               value={value}
@@ -193,8 +215,8 @@ function TrackerPage() {
               textColor="inherit"
               indicatorColor="primary"
               sx={{
-                '& .MuiTab-root': { color: '#b0c4d4' }, // 비활성 탭 글씨색
-                '& .Mui-selected': { color: '#00bfff' }, // 활성 탭 글씨색
+                '& .MuiTab-root': { color: '#b0c4d4' }, // Inactive tab text color
+                '& .Mui-selected': { color: '#00bfff' }, // Active tab text color
                 background: 'transparent'
               }}
             >
@@ -204,16 +226,19 @@ function TrackerPage() {
             </Tabs>
           </Box>
 
+          {/* Error message display */}
           {error && (
             <div className="error-message">
               {error}
             </div>
           )}
 
+          {/* Loading state display */}
           {isLoading ? (
             <div className="loading">Loading...</div>
           ) : (
             <TabPanel value={value} index={0}>
+              {/* Funding Rates Table Section */}
               <div className="table-section">
                 <h2>Funding Rate Comparison</h2>
                 <table className="funding-table">

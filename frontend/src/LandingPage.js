@@ -1,18 +1,24 @@
+// LandingPage.js
+// Landing page for the Funding Rate Arbitrage Tracker. Introduces the project, features, tech stack, and developer info.
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 
+// LandingPage component: Displays project overview, features, tech stack, exchange info, and developer links
 function LandingPage() {
   const navigate = useNavigate();
 
   return (
     <div className="landing-container">
       <div className="landing-content">
+        {/* Project Title and Subtitle */}
         <h1>Funding Rate Arbitrage Tracker</h1>
         <p className="subtitle">
           Real-time crypto funding rate comparison and arbitrage opportunity explorer.
         </p>
 
+        {/* Project Vision & Motivation Section */}
         <section className="feature-section">
           <h2>Project Vision & Motivation</h2>
           <p>
@@ -23,6 +29,7 @@ function LandingPage() {
           </p>
         </section>
 
+        {/* Main Features Section */}
         <section className="feature-section">
           <h2>Main Features</h2>
           <ul>
@@ -34,6 +41,7 @@ function LandingPage() {
           </ul>
         </section>
 
+        {/* Tech Stack Section */}
         <section className="feature-section">
           <h2>Tech Stack</h2>
           <ul>
@@ -45,6 +53,7 @@ function LandingPage() {
           </ul>
         </section>
 
+        {/* Exchange Info Section */}
         <section className="feature-section">
           <h2>About the Exchanges</h2>
           <div className="exchange-cards">
@@ -63,6 +72,7 @@ function LandingPage() {
           </div>
         </section>
 
+        {/* Developer Info Section */}
         <section className="feature-section">
           <h2>About the Developer</h2>
           <p>
@@ -70,7 +80,7 @@ function LandingPage() {
           </p>
           <div className="dev-links">
             <a
-              href="https://www.linkedin.com/in/your-linkedin-id"
+              href="https://www.linkedin.com/in/jeangu-jaden-kang-077a0b165/"
               target="_blank"
               rel="noopener noreferrer"
               className="dev-link-btn"
@@ -88,6 +98,7 @@ function LandingPage() {
           </div>
         </section>
 
+        {/* Navigation Button to Tracker Page */}
         <button className="go-tracker-btn" onClick={() => navigate("/tracker")}>
           Go to Tracker
         </button>
