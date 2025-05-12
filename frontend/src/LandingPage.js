@@ -68,6 +68,24 @@ function LandingPage() {
           <p>
             Hi, I'm Jaden Kang. I'm passionate about crypto, financial innovation, and building tools that make markets more accessible and efficient for everyone.
           </p>
+          <div className="dev-links">
+            <a
+              href="https://www.linkedin.com/in/your-linkedin-id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dev-link-btn"
+            >
+              LinkedIn
+            </a>
+            <a
+              href="https://github.com/Jadenkkk/Funding_Arb_CS50"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dev-link-btn"
+            >
+              GitHub Repository
+            </a>
+          </div>
         </section>
 
         <button className="go-tracker-btn" onClick={() => navigate("/tracker")}>

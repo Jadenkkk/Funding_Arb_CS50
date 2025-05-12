@@ -133,17 +133,26 @@ function TrackerPage() {
     return (typeof value === 'number' && !isNaN(value)) ? value.toLocaleString() : '-';
   };
 
-  // 차트 데이터 변환 (UTC 시:분, 최신이 오른쪽)
+  // 1. 모든 스냅샷에서 top 5 코인 선정 (가장 최근 스냅샷 기준)
+  const allSymbols = historyData.length
+    ? [...historyData[0].data]
+        .sort((a, b) => b.apr - a.apr)
+        .slice(0, 5)
+        .map(x => x.symbol)
+    : [];
+
+  // 2. 각 스냅샷마다 top 5 코인에 대해 값이 없으면 0으로 채움 (선이 끊기지 않게)
   const chartData = historyData
     .slice()
     .reverse()
-    .map(item => ({
-      timestamp: new Date(item.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }),
-      ...item.data.reduce((acc, curr) => ({
-        ...acc,
-        [curr.symbol]: curr.apr
-      }), {})
-    }));
+    .map(item => {
+      const row = { timestamp: new Date(item.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) };
+      allSymbols.forEach(symbol => {
+        const found = item.data.find(x => x.symbol === symbol);
+        row[symbol] = found ? found.apr : 0;
+      });
+      return row;
+    });
 
   // 최신 스냅샷의 UTC 날짜 (YYYY-MM-DD)
   const latestUTCDate = historyData.length > 0 ? new Date(historyData[0].created_at).toISOString().slice(0, 10) : '';
@@ -214,7 +223,7 @@ function TrackerPage() {
                       <th>Binance</th>
                       <th>Bybit</th>
                       <th>OKX</th>
-                      <th>Volume (24h)</th>
+                      <th>Binance Futures Volume (24h)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -269,9 +278,7 @@ function TrackerPage() {
             </TabPanel>
           )}
 
-          {historyLoading ? (
-            <div className="loading">Loading chart...</div>
-          ) : (
+          {value === 2 && (
             <TabPanel value={value} index={2}>
               <div className="table-section">
                 <h2>Top Arbitrage APR History</h2>
@@ -286,9 +293,9 @@ function TrackerPage() {
                       <CartesianGrid stroke="#444" strokeDasharray="3 3" />
                       <XAxis dataKey="timestamp" />
                       <YAxis label={{ value: 'APR (%)', angle: -90, position: 'insideLeft', fill: '#b0c4d4' }} tickFormatter={v => v.toFixed(0)} />
-                      <Tooltip formatter={(value) => value ? value.toFixed(2) + '%' : '-'} />
+                      <Tooltip formatter={value => value ? value.toFixed(2) + '%' : '-'} />
                       <Legend />
-                      {latestTop5.map((symbol, index) => (
+                      {allSymbols.map((symbol, index) => (
                         <Line
                           key={symbol}
                           type="monotone"
